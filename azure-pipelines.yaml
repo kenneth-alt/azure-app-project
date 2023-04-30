@@ -14,6 +14,22 @@ variables:
     value: python_fun_project
 
 stages:
+- stage: Infrastructure_Deploy
+  displayName: Deploy Infrastructure
+  jobs:
+  - job: Infrastructure_Deploy_Job
+    displayName: Deploy Infrastructure
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: $(subscription-name)
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          az deployment group create --resource-group $(resource-group-name) --template-file azure_infra_deploy.yaml --parameters location=$(location) appServicePlanSku=$(sku) appName=$(app-name)
+
 - stage: Build
   displayName: Build stage
   jobs:
@@ -25,6 +41,9 @@ stages:
     - script: |
         echo Building $(app-name)...
       displayName: 'Build the application'
+    - script: |
+        docker build -t $(app-name) .
+      displayName: 'Dockerize the application'
 
 - stage: Deploy_Staging
   displayName: Deploy Staging
@@ -39,16 +58,23 @@ stages:
           - script: |
               echo Deploying to staging environment...
             displayName: 'Deploy to staging'
+          - task: Docker@2
+            displayName: 'Push image to Azure Container Registry'
+            inputs:
+              containerRegistry: 'myregistry'
+              repository: '$(app-name)'
+              command: 'push'
+              tags: '$(Build.BuildId)'
           - task: AzureWebApp@1
             inputs:
               azureSubscription: $(subscription-name)
-              appType: webAppLinux
-              appName: $(app-name)
-              package: $(Pipeline.Workspace)/drop/$(Build.BuildId).zip
+              appType: webAppContainer
+              appName: $(app-name)-staging
               runtimeStack: 'PYTHON|3.9'
               regionName: $(location)
               resourceGroupName: $(resource-group-name)
-              skuName: $(sku)
+              dockerImageTag: '$(Build.BuildId)'
+              startupCommand: 'python fun_facts.py'
 
 - stage: Deploy_Production
   displayName: Deploy Production
@@ -63,13 +89,20 @@ stages:
           - script: |
               echo Deploying to production environment...
             displayName: 'Deploy to production'
+          - task: Docker@2
+            displayName: 'Push image to Azure Container Registry'
+            inputs:
+              containerRegistry: 'myregistry'
+              repository: '$(app-name)'
+              command: 'push'
+              tags: '$(Build.BuildId)'
           - task: AzureWebApp@1
             inputs:
               azureSubscription: $(subscription-name)
-              appType: webAppLinux
-              appName: $(app-name)
-              package: $(Pipeline.Workspace)/drop/$(Build.BuildId).zip
+              appType: webAppContainer
+              appName: $(app-name)-prod
               runtimeStack: 'PYTHON|3.9'
               regionName: $(location)
               resourceGroupName: $(resource-group-name)
-              skuName: $(sku)
+              dockerImageTag: '$(Build.BuildId)'
+              startupCommand: 'python fun_facts.py'
