@@ -1,0 +1,34 @@
+# ARM template to create an Azure Resource Group, App Service Plan, and Web App
+# Replace <RESOURCE_GROUP_NAME>, <APP_SERVICE_PLAN_NAME>, and <WEB_APP_NAME> with your own values
+# Use the same values for <APP_SERVICE_PLAN_NAME> and <WEB_APP_NAME>
+
+resources:
+  - name: python_fun_project
+    type: Microsoft.Resources/resourceGroups
+    apiVersion: '2020-06-01'
+    location: eastus
+    properties: {}
+
+  - name: python-fun-service-plan
+    type: Microsoft.Web/serverfarms
+    apiVersion: '2020-06-01'
+    location: eastus
+    dependsOn:
+      - Microsoft.Resources/resourceGroups/python_fun_project
+    properties:
+      name: python-fun-service-plan
+      sku:
+        name: S1
+        tier: Standard
+        size: S1
+      reserved: true
+
+  - name: python-fun-web-app
+    type: Microsoft.Web/sites
+    apiVersion: '2020-06-01'
+    location: eastus
+    dependsOn:
+      - Microsoft.Web/serverfarms/python-fun-service-plan
+    properties:
+      name: python-fun-web-app
+      serverFarmId: "[resourceId('Microsoft.Web/serverfarms', 'python-fun-service-plan')]"

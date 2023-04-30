@@ -1,0 +1,40 @@
+# app-deployment.yaml
+# Deploy a Python web app to an Azure App Service
+
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  - name: resourceGroup
+    value: myResourceGroup
+  - name: appServiceName
+    value: myAppServiceName
+  - name: appName
+    value: myApp
+
+steps:
+- task: AzureResourceGroupDeployment@2
+  displayName: 'Deploy ARM Template'
+  inputs:
+    azureSubscription: '<your-azure-subscription>'
+    action: 'Create Or Update Resource Group'
+    resourceGroupName: $(resourceGroup)
+    location: 'eastus'
+    templateLocation: 'Linked artifact'
+    csmFile: 'templates/azuredeploy.json'
+    csmParametersFile: 'templates/azuredeploy.parameters.json'
+    overrideParameters: '-appServiceName $(appServiceName)'
+
+- task: AzureWebApp@1
+  displayName: 'Deploy Python App'
+  inputs:
+    azureSubscription: '<your-azure-subscription>'
+    appName: $(appServiceName)
+    package: '$(Build.ArtifactStagingDirectory)/$(appName).zip'
+    runtimeStack: 'PYTHON|3.9'
+    regionName: 'eastus'
+    resourceGroupName: $(resourceGroup)
+    slotName: 'staging'

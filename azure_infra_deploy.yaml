@@ -1,0 +1,25 @@
+# infrastructure.yaml
+# Deploy Azure resources using an ARM template
+
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  - name: resourceGroup
+    value: myResourceGroup
+
+steps:
+- task: AzureResourceGroupDeployment@2
+  displayName: 'Deploy ARM Template'
+  inputs:
+    azureSubscription: '<your-azure-subscription>'
+    action: 'Create Or Update Resource Group'
+    resourceGroupName: $(resourceGroup)
+    location: 'eastus'
+    templateLocation: 'Linked artifact'
+    csmFile: 'templates/azuredeploy.json'
+    csmParametersFile: 'templates/azuredeploy.parameters.json'
+    overrideParameters: '-appServiceName $(appServiceName)'

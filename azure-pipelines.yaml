@@ -1,0 +1,75 @@
+trigger:
+- main
+
+variables:
+  - name: app-name
+    value: python_fun_facts
+  - name: location
+    value: eastus
+  - name: sku
+    value: S1
+  - name: subscription-name
+    value: "Azure for Students"
+  - name: resource-group-name
+    value: python_fun_project
+
+stages:
+- stage: Build
+  displayName: Build stage
+  jobs:
+  - job: Build_job
+    displayName: Build
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - script: |
+        echo Building $(app-name)...
+      displayName: 'Build the application'
+
+- stage: Deploy_Staging
+  displayName: Deploy Staging
+  jobs:
+  - deployment: Deploy_Staging_Job
+    displayName: Deploy Staging
+    environment: 'staging'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - script: |
+              echo Deploying to staging environment...
+            displayName: 'Deploy to staging'
+          - task: AzureWebApp@1
+            inputs:
+              azureSubscription: $(subscription-name)
+              appType: webAppLinux
+              appName: $(app-name)
+              package: $(Pipeline.Workspace)/drop/$(Build.BuildId).zip
+              runtimeStack: 'PYTHON|3.9'
+              regionName: $(location)
+              resourceGroupName: $(resource-group-name)
+              skuName: $(sku)
+
+- stage: Deploy_Production
+  displayName: Deploy Production
+  jobs:
+  - deployment: Deploy_Production_Job
+    displayName: Deploy Production
+    environment: 'production'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - script: |
+              echo Deploying to production environment...
+            displayName: 'Deploy to production'
+          - task: AzureWebApp@1
+            inputs:
+              azureSubscription: $(subscription-name)
+              appType: webAppLinux
+              appName: $(app-name)
+              package: $(Pipeline.Workspace)/drop/$(Build.BuildId).zip
+              runtimeStack: 'PYTHON|3.9'
+              regionName: $(location)
+              resourceGroupName: $(resource-group-name)
+              skuName: $(sku)
